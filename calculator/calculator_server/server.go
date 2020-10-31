@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"time"
 
 	"app/gRPC-Golang-Exercise/calculator/calculatorpb"
 
@@ -20,6 +21,28 @@ func (*server) Calculate(ctx context.Context, req *calculatorpb.CalculatorReques
 		Sum: result,
 	}
 	return res,nil
+}
+
+func (*server) PrimeNumberDecompositon(req *calculatorpb.PrimeNumberDecompositonRequest, stream calculatorpb.CalculatorService_PrimeNumberDecompositonServer) error {
+	number := req.GetPrimeNumberDecompositing().GetNumber()
+	for {
+		for i := int32(2); i <= number; i++ {
+			if number % i == 0 {
+				number = number / i
+
+				res := &calculatorpb.PrimeNumberDecompositonResponse{
+					Result: i,
+				}
+				stream.Send(res)
+				time.Sleep(1000 * time.Millisecond)
+				break;
+			}
+		}
+		if number == 1 {
+			break;
+		}
+	}
+	return nil
 }
 
 func main() {
