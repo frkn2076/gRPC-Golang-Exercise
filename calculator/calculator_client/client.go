@@ -28,7 +28,9 @@ func main()  {
 
 	// doServerStreaming(c)
 
-	doClientStreaming(c)
+	// doClientStreaming(c)
+
+	doBiDirectionalStreaming(c)
 }
 
 func doUnary(c calculatorpb.CalculatorServiceClient){
@@ -118,4 +120,72 @@ func doClientStreaming(c calculatorpb.CalculatorServiceClient){
 		log.Fatalf("error while receiving response from Average: %v", err)
 	}
 	fmt.Printf("LongGreet Response: %v\n", res)
+}
+
+func doBiDirectionalStreaming(c calculatorpb.CalculatorServiceClient){
+
+	fmt.Println("Starting to do a Bi-Directional Streaming RPC...")
+
+	//we create a stream by invoking the client
+	stream, err := c.FindMaximum(context.Background())
+	if err != nil {
+		log.Fatalf("Error while creating stream: %v", err)
+		return
+	}
+
+	requests := []*calculatorpb.FindMaximumRequest{
+		&calculatorpb.FindMaximumRequest{
+			Number: 1,
+		},
+		&calculatorpb.FindMaximumRequest{
+			Number: 5,
+		},
+		&calculatorpb.FindMaximumRequest{
+			Number: 3,
+		},
+		&calculatorpb.FindMaximumRequest{
+			Number: 6,
+		},
+		&calculatorpb.FindMaximumRequest{
+			Number: 2,
+		},
+		&calculatorpb.FindMaximumRequest{
+			Number: 20,
+		},
+	}
+
+	waitChannel := make(chan struct{})
+
+	//we send a bunch of messages to the client (go routine)
+	go func() {
+		//function to send a bunch of messages
+		for _, req := range requests {
+			fmt.Printf("Sending message: %v\n", req)
+			stream.Send(req)
+			time.Sleep(1000 * time.Millisecond)
+		}
+		stream.CloseSend()
+	}()
+
+	//we receive a bunch of messages from the client (go routine)
+	go func() {
+		//function to receive a bunch of messages
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break;
+			}
+			if err != nil {
+				log.Fatalf("Error while receiving: &v", err)
+				break;
+			}
+			fmt.Printf("Received &v\n", res.GetResult())
+		}
+		close(waitChannel)
+	}()
+
+	//block until everything is done
+	//waits channel to be closed. If you removed the <- line , the program would exit before the go func even started.
+	<-waitChannel
+
 }

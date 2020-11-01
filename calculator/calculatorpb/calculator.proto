@@ -40,6 +40,14 @@ message AverageResponse {
     double res = 1;
 }
 
+message FindMaximumRequest {
+    int32 number = 1;
+}
+
+message FindMaximumResponse {
+    int32 result = 1;
+}
+
 
 service CalculatorService {
     //Unary
@@ -50,4 +58,7 @@ service CalculatorService {
 
     //Client Streaming
     rpc Average(stream AverageRequest) returns (AverageResponse) {};
+
+    //Bi-Directional Streaming
+    rpc FindMaximum(stream FindMaximumRequest) returns (stream FindMaximumResponse) {};
 }

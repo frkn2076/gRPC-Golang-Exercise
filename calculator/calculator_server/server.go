@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 	"io"
+	"math"
 
 	"app/gRPC-Golang-Exercise/calculator/calculatorpb"
 
@@ -65,6 +66,32 @@ func (*server) Average(stream calculatorpb.CalculatorService_AverageServer) erro
 		number := req.GetAveraging().GetNumber()
 		sum += number
 		i++
+	}
+}
+
+func (*server) FindMaximum(stream calculatorpb.CalculatorService_FindMaximumServer) error {
+	var max int32 = math.MinInt32
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			log.Fatalf("Error while reading client stream: %v", err)
+			return err
+		}
+		number := req.GetNumber()
+		if number > max {
+			max = number
+			sendErr := stream.Send(&calculatorpb.FindMaximumResponse{
+				Result: number,
+			})
+			if sendErr != nil {
+				log.Fatalf("Error while sending data to client: %v", sendErr)
+				return sendErr
+			}
+		}
+
 	}
 }
 
