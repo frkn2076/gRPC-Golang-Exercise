@@ -8,14 +8,15 @@ import(
 	"time"
 
 	"app/gRPC-Golang-Exercise/calculator/calculatorpb"
-
-
+ 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/codes"
 )
 
 func main()  {
 	fmt.Println("Hello I'm a calculator client")
-	cc, err := grpc.Dial("localhost:50052", grpc.WithInsecure())
+	cc, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Could not connect : %v", err)
 	}
@@ -30,7 +31,9 @@ func main()  {
 
 	// doClientStreaming(c)
 
-	doBiDirectionalStreaming(c)
+	// doBiDirectionalStreaming(c)
+
+	doErrorUnary(c)
 }
 
 func doUnary(c calculatorpb.CalculatorServiceClient){
@@ -188,4 +191,37 @@ func doBiDirectionalStreaming(c calculatorpb.CalculatorServiceClient){
 	//waits channel to be closed. If you removed the <- line , the program would exit before the go func even started.
 	<-waitChannel
 
+}
+
+func doErrorUnary(c calculatorpb.CalculatorServiceClient){ 
+	fmt.Println("Starting to do a SquareRoot Unary RPC...")
+
+	// correct call
+	doErrorCall(c, 10)
+	
+	// error call
+	doErrorCall(c, -2)
+}
+
+func doErrorCall(c calculatorpb.CalculatorServiceClient, n int32){
+	res, err := c.SquareRoot(context.Background(), &calculatorpb.SquareRootRequest{
+		Number: n,
+	})
+
+	if err != nil {
+		respErr, ok := status.FromError(err)
+		if ok {
+			//actual error from gRPC (defined error)
+			fmt.Println(respErr.Message())
+			fmt.Println(respErr.Code())
+			if respErr.Code() == codes.InvalidArgument {
+				fmt.Println("We sent a negative number!")
+			}
+
+		} else {
+			log.Fatalf("Big error calling SquareRoot %v\n", err)
+		}
+	}
+
+	fmt.Printf("Result of square root of %v: %v\n", n, res.GetSquareRoot())
 }

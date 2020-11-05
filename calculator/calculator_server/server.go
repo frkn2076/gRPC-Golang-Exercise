@@ -2,34 +2,37 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
+	"math"
 	"net"
 	"time"
-	"io"
-	"math"
+	"fmt"
 
 	"app/gRPC-Golang-Exercise/calculator/calculatorpb"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type server struct{}
 
-func (*server) Calculate(ctx context.Context, req *calculatorpb.CalculatorRequest) (*calculatorpb.CalculatingResponse, error){
+func (*server) Calculate(ctx context.Context, req *calculatorpb.CalculatorRequest) (*calculatorpb.CalculatingResponse, error) {
 	num1 := req.GetCalculating().GetNumber1()
 	num2 := req.GetCalculating().GetNumber2()
 	result := num1 + num2
 	res := &calculatorpb.CalculatingResponse{
 		Sum: result,
 	}
-	return res,nil
+	return res, nil
 }
 
 func (*server) PrimeNumberDecompositon(req *calculatorpb.PrimeNumberDecompositonRequest, stream calculatorpb.CalculatorService_PrimeNumberDecompositonServer) error {
 	number := req.GetPrimeNumberDecompositing().GetNumber()
 	for {
 		for i := int32(2); i <= number; i++ {
-			if number % i == 0 {
+			if number%i == 0 {
 				number = number / i
 
 				res := &calculatorpb.PrimeNumberDecompositonResponse{
@@ -37,11 +40,11 @@ func (*server) PrimeNumberDecompositon(req *calculatorpb.PrimeNumberDecompositon
 				}
 				stream.Send(res)
 				time.Sleep(1000 * time.Millisecond)
-				break;
+				break
 			}
 		}
 		if number == 1 {
-			break;
+			break
 		}
 	}
 	return nil
@@ -60,7 +63,7 @@ func (*server) Average(stream calculatorpb.CalculatorService_AverageServer) erro
 			})
 		}
 		if err != nil {
-			log.Fatalf("Error while reading client stream %v" ,err)
+			log.Fatalf("Error while reading client stream %v", err)
 		}
 
 		number := req.GetAveraging().GetNumber()
@@ -95,8 +98,19 @@ func (*server) FindMaximum(stream calculatorpb.CalculatorService_FindMaximumServ
 	}
 }
 
+func (*server) SquareRoot(ctx context.Context, req *calculatorpb.SquareRootRequest) (*calculatorpb.SquareRootResponse, error) {
+	number := req.GetNumber()
+	if number < 0 {
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Received a negative  number: %v", number),)
+	}
+
+	return &calculatorpb.SquareRootResponse {
+		SquareRoot: math.Sqrt(float64(number)),
+	}, nil
+}
+
 func main() {
-	lis, err := net.Listen("tcp", "0.0.0.0:50052")
+	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
