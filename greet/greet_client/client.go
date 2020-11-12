@@ -11,6 +11,8 @@ import(
 
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/codes"
 )
 
 func main()  {
@@ -30,7 +32,10 @@ func main()  {
 
 	// doClientStreaming(c)
 
-	doBiDirectionalStreaming(c)
+	// doBiDirectionalStreaming(c)
+
+	doUnaryWithDeadline(c, 5 * time.Second) //this should complete
+	doUnaryWithDeadline(c, 1 * time.Second) //this should timeout
 }
 
 func doUnary(c greetpb.GreetServiceClient){
@@ -194,4 +199,34 @@ func doBiDirectionalStreaming(c greetpb.GreetServiceClient){
 	//block until everything is done
 	//waits channel to be closed. If you removed the <- line , the program would exit before the go func even started.
 	<-waitChannel
+}
+
+func doUnaryWithDeadline(c greetpb.GreetServiceClient, seconds time.Duration){
+	fmt.Println("Starting to do a UnaryWithDeadline RPC...")
+	req := &greetpb.GreetWithDeadlineRequest{
+		Greeting: &greetpb.Greeting{
+			FirstName: "Furkan",
+			LastName: "Öztürk",
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), seconds)
+	defer cancel()
+
+
+	res, err := c.GreetWithDeadline(ctx, req)
+	if err != nil {
+
+		statusErr, ok := status.FromError(err)
+		if ok {
+			if statusErr.Code() == codes.DeadlineExceeded {
+				fmt.Println("Timeout was hit! Deadline was exceeded")
+			} else {
+				fmt.Printf("Unexpected error &v", statusErr)
+			}
+		} else {
+			log.Fatalf("error while calling GreetWithDeadline RPC: %v", err)
+		}
+		return
+	}
+	log.Printf("Response from GreetWithDeadline: %v",res.Result)
 }
