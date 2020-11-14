@@ -1,23 +1,40 @@
 package main
 
-import(
-	"fmt"
-	"log"
+import (
 	"context"
+	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"app/gRPC-Golang-Exercise/greet/greetpb"
 
-
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 )
 
-func main()  {
+func main() {
 	fmt.Println("Hello I'm a client")
-	cc, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+
+	certFile := "ssl/ca.crt" //certificate Authority Trust Certificate
+	creds, sslErr := credentials.NewClientTLSFromFile(certFile, "")
+	if sslErr != nil {
+		log.Fatalf("Error while laoding CA trust certificate %v", sslErr)
+		return
+	}
+
+	opts := grpc.WithTransportCredentials(creds)
+	// //you can change ssl certificate trust by a flag
+	// tls := false
+	// if tls {
+	// 	opts := grpc.WithInsecure()
+	// } else {
+	// 	opts := grpc.WithTransportCredentials(creds)
+	// }
+	// //
+	cc, err := grpc.Dial("localhost:50051", opts /*grpc.WithInsecure()*/)
 	if err != nil {
 		log.Fatalf("Could not connect : %v", err)
 	}
@@ -26,7 +43,7 @@ func main()  {
 
 	c := greetpb.NewGreetServiceClient(cc)
 
-	//doUnary(c)
+	doUnary(c)
 
 	// doServerStreaming(c)
 
@@ -34,31 +51,31 @@ func main()  {
 
 	// doBiDirectionalStreaming(c)
 
-	doUnaryWithDeadline(c, 5 * time.Second) //this should complete
-	doUnaryWithDeadline(c, 1 * time.Second) //this should timeout
+	// doUnaryWithDeadline(c, 5 * time.Second) //this should complete
+	// doUnaryWithDeadline(c, 1 * time.Second) //this should timeout
 }
 
-func doUnary(c greetpb.GreetServiceClient){
+func doUnary(c greetpb.GreetServiceClient) {
 	fmt.Println("Starting to do a Unary RPC...")
 	req := &greetpb.GreetRequest{
 		Greeting: &greetpb.Greeting{
 			FirstName: "Furkan",
-			LastName: "Öztürk",
+			LastName:  "Öztürk",
 		},
 	}
 	res, err := c.Greet(context.Background(), req)
 	if err != nil {
 		log.Fatalf("error while calling Greet RPC: %v", err)
 	}
-	log.Printf("Response from Greet: %v",res.Result)
+	log.Printf("Response from Greet: %v", res.Result)
 }
 
-func doServerStreaming(c greetpb.GreetServiceClient){
+func doServerStreaming(c greetpb.GreetServiceClient) {
 	fmt.Println("Starting to do a Server Streaming RPC...")
 	req := &greetpb.GreetManyTimesRequest{
 		Greeting: &greetpb.Greeting{
 			FirstName: "Furkan",
-			LastName: "Öztürk",
+			LastName:  "Öztürk",
 		},
 	}
 	resStream, err := c.GreetManyTimes(context.Background(), req)
@@ -69,7 +86,7 @@ func doServerStreaming(c greetpb.GreetServiceClient){
 		msg, err := resStream.Recv()
 		if err == io.EOF {
 			//We've reached the end of the stream
-			break;
+			break
 		}
 		if err != nil {
 			log.Fatalf("Error occured while stream %v", err)
@@ -78,7 +95,7 @@ func doServerStreaming(c greetpb.GreetServiceClient){
 	}
 }
 
-func doClientStreaming(c greetpb.GreetServiceClient){
+func doClientStreaming(c greetpb.GreetServiceClient) {
 	fmt.Println("Starting to do a Client Streaming RPC...")
 
 	requests := []*greetpb.LongGreetRequest{
@@ -108,13 +125,13 @@ func doClientStreaming(c greetpb.GreetServiceClient){
 			},
 		},
 	}
-	
+
 	stream, err := c.LongGreet(context.Background())
 	if err != nil {
 		log.Fatalf("error while calling  LongGreet: %v", err)
 	}
 
-	//we iterate over our slice and send each message  individually 
+	//we iterate over our slice and send each message  individually
 	for _, req := range requests {
 		fmt.Printf("Sending request %v\n", req)
 		stream.Send(req)
@@ -129,7 +146,7 @@ func doClientStreaming(c greetpb.GreetServiceClient){
 
 }
 
-func doBiDirectionalStreaming(c greetpb.GreetServiceClient){
+func doBiDirectionalStreaming(c greetpb.GreetServiceClient) {
 	fmt.Println("Starting to do a Bi-Directional Streaming RPC...")
 
 	//we create a stream by invoking the client
@@ -185,11 +202,11 @@ func doBiDirectionalStreaming(c greetpb.GreetServiceClient){
 		for {
 			res, err := stream.Recv()
 			if err == io.EOF {
-				break;
+				break
 			}
 			if err != nil {
 				log.Fatalf("Error while receiving: &v", err)
-				break;
+				break
 			}
 			fmt.Printf("Received &v\n", res.GetResult())
 		}
@@ -201,17 +218,16 @@ func doBiDirectionalStreaming(c greetpb.GreetServiceClient){
 	<-waitChannel
 }
 
-func doUnaryWithDeadline(c greetpb.GreetServiceClient, seconds time.Duration){
+func doUnaryWithDeadline(c greetpb.GreetServiceClient, seconds time.Duration) {
 	fmt.Println("Starting to do a UnaryWithDeadline RPC...")
 	req := &greetpb.GreetWithDeadlineRequest{
 		Greeting: &greetpb.Greeting{
 			FirstName: "Furkan",
-			LastName: "Öztürk",
+			LastName:  "Öztürk",
 		},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), seconds)
 	defer cancel()
-
 
 	res, err := c.GreetWithDeadline(ctx, req)
 	if err != nil {
@@ -228,5 +244,5 @@ func doUnaryWithDeadline(c greetpb.GreetServiceClient, seconds time.Duration){
 		}
 		return
 	}
-	log.Printf("Response from GreetWithDeadline: %v",res.Result)
+	log.Printf("Response from GreetWithDeadline: %v", res.Result)
 }
