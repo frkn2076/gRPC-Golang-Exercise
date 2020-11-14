@@ -6,7 +6,7 @@
   * Client Streaming
   * Bi-directional Streaming
   
-- Error Handling With gRPC
+- Error Handling with gRPC
 
 - Deadlines
 
