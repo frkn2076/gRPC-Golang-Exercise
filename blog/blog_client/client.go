@@ -3,16 +3,12 @@ package main
 import(
 	"context"
 	"fmt"
-	// "io"
+	"io"
 	"log"
-	// "time"
 
 	"app/gRPC-Golang-Exercise/blog/blogpb"
 
 	"google.golang.org/grpc"
-	// "google.golang.org/grpc/codes"
-	// "google.golang.org/grpc/credentials"
-	// "google.golang.org/grpc/status"
 )
 
 func main() {
@@ -65,5 +61,51 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Blog was read: %v", readBlogRes)
+	fmt.Printf("Blog was read: %v \n", readBlogRes)
+
+
+	//update blog
+	newBlog := &blogpb.Blog{
+		Id: blogId,
+		AuthorId: "Changed Author",
+		Title: "Changed Title",
+		Content: "Changed Content",
+	}
+
+	updateRes, updateErr := c.UpdateBlog(context.Background(), &blogpb.UpdateBlogRequest{Blog: newBlog})
+	if updateErr != nil{
+		fmt.Printf("Error happened while updating: %v \n", readBlogErr)
+		return
+	}
+	fmt.Printf("Blog was updated: %v \n", updateRes)
+
+
+	//delete blog
+
+	deleteRes, deleteErr := c.DeleteBlog(context.Background(), &blogpb.DeleteBlogRequest{BlogId: blogId})
+	if deleteErr != nil{
+		fmt.Printf("Error happened while deleting: %v \n", readBlogErr)
+		return
+	}
+	fmt.Printf("Blog was deleted: %v \n", deleteRes)
+
+
+
+	//list blogs
+	stream, streamErr := c.ListBlog(context.Background(), &blogpb.ListBlogRequest{})
+
+	if streamErr != nil {
+		log.Fatalf("error while calling ListBlog RPC: %v", streamErr)
+	}
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			//We've reached the end of the stream
+			break;
+		}
+		if err != nil {
+			log.Fatalf("Error occured while stream %v", err)
+		}
+		fmt.Println(res.GetBlog())
+	}
 }
